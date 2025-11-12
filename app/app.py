@@ -1,16 +1,16 @@
 import sys
 import os
+import streamlit as st
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-
-import streamlit as st
 from src.servicios.servicio_veterinario import ServicioVeterinario
 from src.repositorio.repositorio_mascotas import RepositorioMascotas
+from src.modelos.mascota import Mascota
+from src.modelos.persona import Persona
 
 repo = RepositorioMascotas()
 servicio = ServicioVeterinario()
-
 
 st.title("Clínica Veterinaria Patitas")
 
@@ -27,13 +27,12 @@ if menu == "Registrar Mascota":
 
     if st.button("Guardar"):
         if nombre and especie and nombre_dueño and telefono_dueño:
-            mascota = servicio.registrar_mascota(
-                nombre, especie, edad,
-                nombre_dueño, telefono_dueño
+            mascota = servicio.agregar_mascota(
+                Mascota(nombre, especie, edad, Persona(nombre_dueño, telefono_dueño))
             )
-            st.success(f"✅ Mascota registrada: {mascota}")
+            st.success(f"Mascota registrada: {mascota}")
         else:
-            st.error("❌ Faltan datos obligatorios.")
+            st.error("Faltan datos obligatorios.")
 
 elif menu == "Listar Mascotas":
     st.header("Listado de mascotas registradas")
@@ -44,4 +43,4 @@ elif menu == "Listar Mascotas":
         st.info("Aún no hay mascotas registradas.")
     else:
         for m in mascotas:
-            st.write(f"🐶 **{m.nombre}** ({m.especie}, {m.edad} años) – Dueño: {m.dueño.nombre}")
+            st.write(f"**{m.nombre}** ({m.especie}, {m.edad} años) – Dueño: {m.dueño.nombre}")
