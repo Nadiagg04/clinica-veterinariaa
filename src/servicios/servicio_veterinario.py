@@ -3,6 +3,7 @@ from src.modelos.veterinario import Veterinario
 from src.modelos.cliente import Cliente
 from src.utils.excepciones import ErrorMascota, ErrorVeterinario, ErrorValidacion
 from src.utils.logger import logger
+from src.db.conector_db import ConectorDB
 
 
 class ServicioVeterinario:
@@ -12,6 +13,7 @@ class ServicioVeterinario:
         self.mascotas = []
         self.veterinarios = []
         self.clientes = []
+        self.db = ConectorDB()  
 
     def agregar_mascota(self, mascota: Mascota):
         logger.info(f"Agregando mascota: {mascota.nombre}")
@@ -19,6 +21,16 @@ class ServicioVeterinario:
             logger.error("El objeto no es una mascota válida.")
             raise ErrorMascota("El objeto no es una mascota válida.")
         self.mascotas.append(mascota)
+        # Guardar en la base de datos
+        try:
+            self.db.ejecutar(
+                "INSERT INTO mascotas (nombre, especie, edad, duenio_id) VALUES (?, ?, ?, ?)",
+                (mascota.nombre, mascota.especie, mascota.edad, mascota.duenio_id)
+            )
+            logger.info(f"Mascota {mascota.nombre} guardada en la base de datos.")
+        except Exception as e:
+            logger.error(f"Error al guardar la mascota en la base de datos: {e}")
+            raise ErrorMascota("Error al guardar la mascota en la base de datos.")
 
     def agregar_veterinario(self, veterinario: Veterinario):
         logger.info(f"Agregando veterinario: {veterinario.nombre}")
@@ -26,34 +38,91 @@ class ServicioVeterinario:
             logger.error("El objeto no es un veterinario válido.")
             raise ErrorVeterinario("El objeto no es un veterinario válido.")
         self.veterinarios.append(veterinario)
-
+        try:
+            self.db.ejecutar(
+                "INSERT INTO veterinarios (nombre, especialidad, telefono) VALUES (?, ?, ?)",
+                (veterinario.nombre, veterinario.especialidad, veterinario.telefono)
+            )
+            logger.info(f"Veterinario {veterinario.nombre} guardado en la base de datos.")
+        except Exception as e:
+            logger.error(f"Error al guardar el veterinario en la base de datos: {e}")
+            raise ErrorVeterinario("Error al guardar el veterinario en la base de datos.")
+        
     def agregar_cliente(self, cliente: Cliente):
-        logger.info(f"Agregando cliente: {cliente.nombre}")
         if not isinstance(cliente, Cliente):
-            logger.error("El objeto no es un cliente válido.")
             raise ErrorValidacion("El objeto no es un cliente válido.")
+
         self.clientes.append(cliente)
 
+        try:
+            conexion = self.db.conectar()
+            cur = conexion.cursor()
+            cur.execute(
+                "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)",
+                (cliente.nombre, cliente.telefono)
+            )
+            conexion.commit()
+            conexion.close()
+            print(f"Cliente {cliente.nombre} guardado en la base de datos.")
+        except Exception as e:
+            print(f"Error SQLite real: {e}") 
+            raise ErrorValidacion("Error al guardar el cliente en la base de datos.")
+
+
+
     def listar_mascotas(self):
-        logger.info("Listando mascotas registradas.")
-        if not self.mascotas:
-            logger.error("No hay mascotas registradas.")
-            raise ErrorMascota("No hay mascotas registradas.")
-        return self.mascotas
+        logger.info("Listando mascotas desde la base de datos.")
+        try:
+            cur = self.db.ejecutar("""
+                SELECT m.id, m.nombre, m.especie, m.edad, c.nombre AS duenio
+                FROM mascotas m
+                LEFT JOIN clientes c ON m.duenio_id = c.id
+            """)
+            mascotas = cur.fetchall()
+
+            if not mascotas:
+                logger.warning("No hay mascotas registradas en la base de datos.")
+                raise ErrorMascota("No hay mascotas registradas.")
+
+            return mascotas
+        except Exception as e:
+            logger.error(f"Error al listar mascotas: {e}")
+            raise ErrorMascota("Error al obtener las mascotas desde la base de datos.")
+
 
     def listar_veterinarios(self):
-        logger.info("Listando veterinarios registrados.")
-        if not self.veterinarios:
-            logger.error("No hay veterinarios registrados.")
-            raise ErrorVeterinario("No hay veterinarios registrados.")
-        return self.veterinarios
+        logger.info("Listando veterinarios desde la base de datos.")
+        try:
+            cur = self.db.ejecutar("SELECT id, nombre, especialidad, telefono FROM veterinarios")
+            veterinarios = cur.fetchall()
 
+            if not veterinarios:
+                logger.warning("No hay veterinarios registrados en la base de datos.")
+                raise ErrorVeterinario("No hay veterinarios registrados.")
+
+            return veterinarios
+        except Exception as e:
+            logger.error(f"Error al listar veterinarios: {e}")
+            raise ErrorVeterinario("Error al obtener los veterinarios desde la base de datos.")
+        
     def listar_clientes(self):
-        logger.info("Listando clientes registrados.")
-        if not self.clientes:
-            logger.error("No hay clientes registrados.")
-            raise ErrorValidacion("No hay clientes registrados.")
-        return self.clientes
+        logger.info("Listando clientes desde la base de datos.")
+        try:
+            # Eliminamos 'email' de la consulta
+            cur = self.db.ejecutar("SELECT id, nombre, telefono FROM clientes")
+            clientes = cur.fetchall()
+
+            if not clientes:
+                logger.warning("No hay clientes registrados en la base de datos.")
+                raise ErrorValidacion("No hay clientes registrados.")
+
+            return clientes
+        except Exception as e:
+            logger.error(f"Error al listar clientes: {e}")
+            raise ErrorValidacion("Error al obtener los clientes desde la base de datos.")
+
+
+
 
     def atender_mascota(self, veterinario: Veterinario, mascota: Mascota):
         logger.info(f"Veterinario {veterinario.nombre} atendiendo a la mascota {mascota.nombre}.")
