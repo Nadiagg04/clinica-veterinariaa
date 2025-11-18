@@ -8,6 +8,7 @@ class ConectorDB:
 
     def conectar(self):
         try:
+            # Always (re)create a connection and store it
             self.conexion = sqlite3.connect(self.ruta_db)
             return self.conexion
         except sqlite3.Error as e:
@@ -15,14 +16,29 @@ class ConectorDB:
 
     def cerrar(self):
         if self.conexion:
-            self.conexion.close()
+            try:
+                self.conexion.close()
+            finally:
+                # Ensure internal reference is cleared so next call reconnects
+                self.conexion = None
 
     def ejecutar(self, consulta, parametros=()):
         try:
+            # Ensure we have a usable connection. If the existing connection
+            # was closed elsewhere, operations will raise sqlite3.ProgrammingError
+            # so we attempt to reconnect in that case.
             if not self.conexion:
                 self.conectar()
-            cur = self.conexion.cursor()
-            cur.execute(consulta, parametros)
+
+            try:
+                cur = self.conexion.cursor()
+                cur.execute(consulta, parametros)
+            except sqlite3.ProgrammingError:
+                # Connection was closed; reconnect and retry once
+                self.conectar()
+                cur = self.conexion.cursor()
+                cur.execute(consulta, parametros)
+
             self.conexion.commit()
             return cur
         except sqlite3.Error as e:

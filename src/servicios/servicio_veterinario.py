@@ -4,6 +4,7 @@ from src.modelos.cliente import Cliente
 from src.utils.excepciones import ErrorMascota, ErrorVeterinario, ErrorValidacion
 from src.utils.logger import logger
 from src.db.conector_db import ConectorDB
+from datetime import datetime
 
 
 class ServicioVeterinario:
@@ -55,17 +56,14 @@ class ServicioVeterinario:
         self.clientes.append(cliente)
 
         try:
-            conexion = self.db.conectar()
-            cur = conexion.cursor()
-            cur.execute(
+            # Use ConectorDB.ejecutar to handle connection lifecycle consistently
+            self.db.ejecutar(
                 "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)",
                 (cliente.nombre, cliente.telefono)
             )
-            conexion.commit()
-            conexion.close()
             print(f"Cliente {cliente.nombre} guardado en la base de datos.")
         except Exception as e:
-            print(f"Error SQLite real: {e}") 
+            logger.error(f"Error al guardar el cliente en la base de datos: {e}")
             raise ErrorValidacion("Error al guardar el cliente en la base de datos.")
 
 
@@ -120,6 +118,99 @@ class ServicioVeterinario:
         except Exception as e:
             logger.error(f"Error al listar clientes: {e}")
             raise ErrorValidacion("Error al obtener los clientes desde la base de datos.")
+
+
+    def registrar_atencion(self, veterinario_id: int, mascota_id: int, nota: str = ""):
+        """Registra una atención (consulta) realizada por un veterinario a una mascota.
+
+        Args:
+            veterinario_id: id del veterinario en la BD
+            mascota_id: id de la mascota en la BD
+            nota: texto opcional con observaciones
+        """
+        logger.info(f"Registrando atención: vet={veterinario_id} masc={mascota_id}")
+        try:
+            fecha = datetime.now().isoformat(sep=' ', timespec='seconds')
+            self.db.ejecutar(
+                "INSERT INTO atenciones (veterinario_id, mascota_id, fecha, nota) VALUES (?, ?, ?, ?)",
+                (veterinario_id, mascota_id, fecha, nota)
+            )
+            logger.info("Atención registrada en la base de datos.")
+        except Exception as e:
+            logger.error(f"Error al registrar la atención: {e}")
+            raise ErrorValidacion("Error al registrar la atención en la base de datos.")
+
+
+    def listar_atenciones_por_veterinario(self, veterinario_id: int):
+        """Devuelve el historial de atenciones de un veterinario.
+
+        Retorna lista de tuplas: (id_atencion, fecha, nombre_mascota, nombre_duenio, nota)
+        """
+        logger.info(f"Listando atenciones para veterinario {veterinario_id}")
+        try:
+            cur = self.db.ejecutar(
+                """
+                SELECT a.id, a.fecha, m.nombre AS mascota, c.nombre AS duenio, a.nota
+                FROM atenciones a
+                LEFT JOIN mascotas m ON a.mascota_id = m.id
+                LEFT JOIN clientes c ON m.duenio_id = c.id
+                WHERE a.veterinario_id = ?
+                ORDER BY a.fecha DESC
+                """,
+                (veterinario_id,)
+            )
+            atenciones = cur.fetchall()
+            return atenciones
+        except Exception as e:
+            logger.error(f"Error al listar atenciones: {e}")
+            raise ErrorValidacion("Error al obtener el historial de atenciones.")
+
+
+    def eliminar_mascota(self, mascota_id: int):
+        logger.info(f"Eliminando mascota id={mascota_id}")
+        try:
+            self.db.ejecutar("DELETE FROM mascotas WHERE id = ?", (mascota_id,))
+            # limpiar memoria
+            self.mascotas = [m for m in self.mascotas if getattr(m, 'id', None) != mascota_id]
+        except Exception as e:
+            logger.error(f"Error al eliminar mascota: {e}")
+            raise ErrorMascota("Error al eliminar la mascota.")
+
+
+    def eliminar_cliente(self, cliente_id: int):
+        logger.info(f"Eliminando cliente id={cliente_id}")
+        try:
+            # eliminar mascotas del cliente primero para mantener integridad
+            self.db.ejecutar("DELETE FROM mascotas WHERE duenio_id = ?", (cliente_id,))
+            self.db.ejecutar("DELETE FROM clientes WHERE id = ?", (cliente_id,))
+            # limpiar memoria
+            self.clientes = [c for c in self.clientes if getattr(c, 'id', None) != cliente_id]
+            self.mascotas = [m for m in self.mascotas if getattr(m, 'duenio_id', None) != cliente_id and getattr(m, 'duenio', None) and getattr(m.duenio, 'id', None) != cliente_id]
+        except Exception as e:
+            logger.error(f"Error al eliminar cliente: {e}")
+            raise ErrorValidacion("Error al eliminar el cliente.")
+
+
+    def eliminar_veterinario(self, veterinario_id: int):
+        logger.info(f"Eliminando veterinario id={veterinario_id}")
+        try:
+            # eliminar atenciones asociadas
+            self.db.ejecutar("DELETE FROM atenciones WHERE veterinario_id = ?", (veterinario_id,))
+            self.db.ejecutar("DELETE FROM veterinarios WHERE id = ?", (veterinario_id,))
+            # limpiar memoria
+            self.veterinarios = [v for v in self.veterinarios if getattr(v, 'id', None) != veterinario_id]
+        except Exception as e:
+            logger.error(f"Error al eliminar veterinario: {e}")
+            raise ErrorVeterinario("Error al eliminar el veterinario.")
+
+
+    def eliminar_atencion(self, atencion_id: int):
+        logger.info(f"Eliminando atencion id={atencion_id}")
+        try:
+            self.db.ejecutar("DELETE FROM atenciones WHERE id = ?", (atencion_id,))
+        except Exception as e:
+            logger.error(f"Error al eliminar atencion: {e}")
+            raise ErrorValidacion("Error al eliminar la atención.")
 
 
 
