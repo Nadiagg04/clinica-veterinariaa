@@ -31,14 +31,30 @@ def inicializar_db():
                 FOREIGN KEY (duenio_id) REFERENCES clientes(id)
             );
         """
+        ,
+        "atenciones": """
+            CREATE TABLE IF NOT EXISTS atenciones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                veterinario_id INTEGER NOT NULL,
+                mascota_id INTEGER NOT NULL,
+                fecha TEXT NOT NULL,
+                nota TEXT,
+                FOREIGN KEY (veterinario_id) REFERENCES veterinarios(id),
+                FOREIGN KEY (mascota_id) REFERENCES mascotas(id)
+            );
+        """
     }
 
     try:
         for nombre, sql in tablas.items():
             db.ejecutar(sql)
-            logger.info(f"Tabla '{nombre}' verificada o creada correctamente ✅")
+            logger.info(f"Tabla '{nombre}' verificada o creada correctamente")
 
         print("Base de datos inicializada correctamente.")
     except Exception as e:
         logger.error(f"Error al inicializar la base de datos: {e}")
         print(f"Error al inicializar la base de datos: {e}")
+
+
+if __name__ == "__main__":
+    inicializar_db()
