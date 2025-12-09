@@ -1,5 +1,4 @@
 class Producto:
-    """Modelo simple para productos vendidos en la clínica."""
 
     def __init__(self, nombre: str, descripcion: str = "", precio: float = 0.0, stock: int = 0):
         self.id = None

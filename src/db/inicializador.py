@@ -40,16 +40,12 @@ def inicializar_db():
                 mascota_id INTEGER NOT NULL,
                 fecha TEXT NOT NULL,
                 nota TEXT,
-<<<<<<< HEAD
                 precio REAL DEFAULT 0,
                 iva REAL DEFAULT 0,
-=======
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                 FOREIGN KEY (veterinario_id) REFERENCES veterinarios(id),
                 FOREIGN KEY (mascota_id) REFERENCES mascotas(id)
             );
         """
-<<<<<<< HEAD
         ,
         "productos": """
             CREATE TABLE IF NOT EXISTS productos (
@@ -60,8 +56,6 @@ def inicializar_db():
                 stock INTEGER DEFAULT 0
             );
         """
-=======
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
     }
 
     try:

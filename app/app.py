@@ -52,12 +52,7 @@ st.markdown(
 
 st.markdown('<div class="header-sub">Gestión clínica — Patitas</div>', unsafe_allow_html=True)
 
-<<<<<<< HEAD
 menu = st.sidebar.radio("Menú", ["Inicio", "Registrar Mascota", "Listar Mascotas", "Listar Clientes", "Veterinarios", "Productos", "Cuentas"])
-=======
-menu = st.sidebar.radio("Menú", ["Inicio", "Registrar Mascota", "Listar Mascotas", "Listar Clientes", "Veterinarios"])
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
-
 
 # Helper: rerun safely across Streamlit versions
 def safe_rerun():
@@ -182,18 +177,11 @@ elif menu == "Veterinarios":
         nombre = st.text_input("Nombre del veterinario")
         especialidad = st.text_input("Especialidad")
         telefono = st.text_input("Teléfono")
-<<<<<<< HEAD
         precio_consulta = st.number_input("Precio de consulta (€)", min_value=0.0, value=0.0, step=0.5, format="%.2f")
 
         if st.button("Guardar veterinario"):
             if nombre and especialidad:
                 vet = Veterinario(nombre, especialidad, telefono, precio_consulta)
-=======
-
-        if st.button("Guardar veterinario"):
-            if nombre and especialidad:
-                vet = Veterinario(nombre, especialidad, telefono)
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                 try:
                     servicio.agregar_veterinario(vet)
                     st.success(f"Veterinario registrado: {nombre}")
@@ -209,13 +197,8 @@ elif menu == "Veterinarios":
                 st.info("Aún no hay veterinarios registrados.")
             else:
                 for v in veterinarios:
-<<<<<<< HEAD
                     id_, nombre, especialidad, telefono, precio = v
                     st.markdown(f"<div class='card'><strong>{nombre}</strong><br/><span class='small-muted'>{especialidad} — Tel: {telefono}</span><div class='small-muted'>Precio consulta: {float(precio):.2f} €</div></div>", unsafe_allow_html=True)
-=======
-                    id_, nombre, especialidad, telefono = v
-                    st.markdown(f"<div class='card'><strong>{nombre}</strong><br/><span class='small-muted'>{especialidad} — Tel: {telefono}</span></div>", unsafe_allow_html=True)
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                     if st.button("Eliminar", key=f"del_vet_{id_}"):
                         try:
                             servicio.eliminar_veterinario(id_)
@@ -249,7 +232,6 @@ elif menu == "Veterinarios":
             vet_sel = st.selectbox("Selecciona veterinario", list(vet_options.keys()))
             mas_sel = st.selectbox("Selecciona mascota", list(mas_options.keys()))
 
-<<<<<<< HEAD
             # obtener precio por defecto del veterinario seleccionado
             selected_vrow = vet_options.get(vet_sel)
 
@@ -257,22 +239,15 @@ elif menu == "Veterinarios":
             default_precio = float(selected_vrow[4]) if selected_vrow and len(selected_vrow) > 4 else 0.0
             precio = st.number_input("Precio base (sin IVA)", min_value=0.0, value=default_precio, step=0.5, format="%.2f")
             iva_sel = st.selectbox("IVA (%)", [0, 5, 10, 21], index=3)
-=======
-            nota = st.text_area("Notas / Observaciones (opcional)")
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
 
             if st.button("Atender"):
                 vrow = vet_options[vet_sel]
                 mrow = mas_options[mas_sel]
 
                 # Crear instancias en memoria para la acción (no duplicar en BD)
-<<<<<<< HEAD
                 # vrow: (id, nombre, especialidad, telefono, precio_consulta)
                 precio_vet = float(vrow[4]) if len(vrow) > 4 else 0.0
                 vet_obj = Veterinario(vrow[1], vrow[2], vrow[3], precio_vet)
-=======
-                vet_obj = Veterinario(vrow[1], vrow[2], vrow[3])
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                 # Attach an id attribute for tracking
                 setattr(vet_obj, 'id', vrow[0])
                 if all((getattr(v, 'id', None) != vrow[0] for v in servicio.veterinarios)):
@@ -289,11 +264,7 @@ elif menu == "Veterinarios":
                     resultado = servicio.atender_mascota(vet_obj, mas_obj)
                     # Registrar la atención en la BD (siempre que tengamos ids)
                     try:
-<<<<<<< HEAD
                         servicio.registrar_atencion(vet_obj.id, mas_obj.id, nota or "", precio=float(precio), iva=float(iva_sel))
-=======
-                        servicio.registrar_atencion(vet_obj.id, mas_obj.id, nota or "")
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                     except Exception as e:
                         st.warning(f"Atención realizada pero no se pudo guardar el historial: {e}")
 
@@ -321,7 +292,6 @@ elif menu == "Veterinarios":
                         st.info("No hay atenciones registradas para este veterinario.")
                     else:
                         for a in historial:
-<<<<<<< HEAD
                             at_id, fecha, mascota_nombre, duenio_nombre, nota, precio, iva = a
                             total = 0.0
                             try:
@@ -329,10 +299,6 @@ elif menu == "Veterinarios":
                             except Exception:
                                 total = 0.0
                             st.markdown(f"<div class='card'><strong>{mascota_nombre}</strong> <span class='small-muted'>[{fecha}]</span><br/><span class='small-muted'>Dueño: {duenio_nombre}</span><div class='small-muted'>Nota: {nota}</div><div class='small-muted'>Precio: {float(precio):.2f} € — IVA: {float(iva):.0f}% — Total: {total:.2f} €</div></div>", unsafe_allow_html=True)
-=======
-                            at_id, fecha, mascota_nombre, duenio_nombre, nota = a
-                            st.markdown(f"<div class='card'><strong>{mascota_nombre}</strong> <span class='small-muted'>[{fecha}]</span><br/><span class='small-muted'>Dueño: {duenio_nombre}</span><div class='small-muted'>Nota: {nota}</div></div>", unsafe_allow_html=True)
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
                             if st.button("Eliminar", key=f"del_at_{at_id}"):
                                 try:
                                     servicio.eliminar_atencion(at_id)
@@ -342,7 +308,6 @@ elif menu == "Veterinarios":
                                     st.error(f"Error al eliminar atención: {e}")
                 except Exception as e:
                     st.error(f"Error al obtener historial: {e}")
-<<<<<<< HEAD
 
 
 elif menu == "Productos":
@@ -461,6 +426,4 @@ elif menu == "Cuentas":
                 st.markdown(f"<div class='card'><strong>{vnombre}</strong> — Consultas: {consultas} — Subtotal: {float(subtotal):.2f} € — Total (IVA incluido): {float(total_con_iva):.2f} €</div>", unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Error al listar ingresos por veterinario: {e}")
-=======
->>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
 
