@@ -18,7 +18,8 @@ def inicializar_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nombre TEXT NOT NULL,
                 especialidad TEXT,
-                telefono TEXT
+                telefono TEXT,
+                precio_consulta REAL DEFAULT 0
             );
         """,
         "mascotas": """
@@ -39,8 +40,20 @@ def inicializar_db():
                 mascota_id INTEGER NOT NULL,
                 fecha TEXT NOT NULL,
                 nota TEXT,
+                precio REAL DEFAULT 0,
+                iva REAL DEFAULT 0,
                 FOREIGN KEY (veterinario_id) REFERENCES veterinarios(id),
                 FOREIGN KEY (mascota_id) REFERENCES mascotas(id)
+            );
+        """
+        ,
+        "productos": """
+            CREATE TABLE IF NOT EXISTS productos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                descripcion TEXT,
+                precio REAL DEFAULT 0,
+                stock INTEGER DEFAULT 0
             );
         """
     }
