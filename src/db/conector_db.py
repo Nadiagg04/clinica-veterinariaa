@@ -1,13 +1,18 @@
 import sqlite3
-from src.utils.excepciones import ErrorConexionDB
 
 class ConectorDB:
-    def __init__(self, ruta_db="clinica.db"):
-        self.ruta_db = ruta_db
-        self.conexion = None
+    def __init__(self, db_name="clinica.db"):
+        self.db_name = db_name
+        self.conn = None
 
     def conectar(self):
+        if not self.conn:
+            self.conn = sqlite3.connect(self.db_name)
+        return self.conn
+
+    def ejecutar(self, query, params=None):
         try:
+<<<<<<< HEAD
             # Always (re)create a connection and store it
             self.conexion = sqlite3.connect(self.ruta_db)
             return self.conexion
@@ -43,3 +48,24 @@ class ConectorDB:
             return cur
         except sqlite3.Error as e:
             raise ErrorConexionDB(f"Error al ejecutar consulta: {e}")
+=======
+            conn = self.conectar()
+            cursor = conn.cursor()
+
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+
+            conn.commit()
+            return cursor
+        except Exception as e:
+            raise e
+
+    def cerrar(self):
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
+
+>>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178

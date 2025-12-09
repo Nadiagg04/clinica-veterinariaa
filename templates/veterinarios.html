@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Veterinarios</title>
+</head>
+<body>
+    <h1>Lista de Veterinarios</h1>
+    <a href="/veterinarios/nuevo">Agregar Veterinario</a>
+    <ul>
+        {% for vet in veterinarios %}
+            <li>{{ vet[1] }} - {{ vet[2] }} - {{ vet[3] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

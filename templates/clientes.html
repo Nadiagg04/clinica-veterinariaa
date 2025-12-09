@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Clientes</title>
+</head>
+<body>
+    <h1>Lista de Clientes</h1>
+    <a href="/clientes/nuevo">Agregar Cliente</a>
+    <ul>
+        {% for cliente in clientes %}
+            <li>{{ cliente[1] }} - {{ cliente[2] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

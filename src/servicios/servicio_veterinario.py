@@ -2,42 +2,61 @@ from src.modelos.mascota import Mascota
 from src.modelos.veterinario import Veterinario
 from src.modelos.cliente import Cliente
 from src.utils.excepciones import ErrorMascota, ErrorVeterinario, ErrorValidacion
-from src.utils.logger import logger
+from src.utils.logger import Logger
 from src.db.conector_db import ConectorDB
 from datetime import datetime
+<<<<<<< HEAD
 
 
 class ServicioVeterinario:
+=======
+
+logger = Logger
+
+
+class ServicioVeterinario:
+    """Clase de gestión veterinaria con base de datos."""
+>>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
 
     def __init__(self):
+        self.db = ConectorDB()
         self.mascotas = []
         self.veterinarios = []
         self.clientes = []
-        self.db = ConectorDB()  
 
-    def agregar_mascota(self, mascota: Mascota):
-        logger.info(f"Agregando mascota: {mascota.nombre}")
-        if not isinstance(mascota, Mascota):
-            logger.error("El objeto no es una mascota válida.")
-            raise ErrorMascota("El objeto no es una mascota válida.")
-        self.mascotas.append(mascota)
-        # Guardar en la base de datos
+    # -------- CLIENTES --------
+
+    def agregar_cliente(self, cliente: Cliente):
+        if not isinstance(cliente, Cliente):
+            raise ErrorValidacion("El objeto no es un cliente válido.")
+
         try:
             self.db.ejecutar(
-                "INSERT INTO mascotas (nombre, especie, edad, duenio_id) VALUES (?, ?, ?, ?)",
-                (mascota.nombre, mascota.especie, mascota.edad, mascota.duenio_id)
+                "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)",
+                (cliente.nombre, cliente.telefono)
             )
-            logger.info(f"Mascota {mascota.nombre} guardada en la base de datos.")
+            logger.info(f"Cliente {cliente.nombre} guardado en la base de datos.")
         except Exception as e:
-            logger.error(f"Error al guardar la mascota en la base de datos: {e}")
-            raise ErrorMascota("Error al guardar la mascota en la base de datos.")
+            logger.error(f"Error al guardar el cliente: {e}")
+            raise ErrorValidacion("Error al guardar el cliente en la base de datos.")
+
+    def listar_clientes(self):
+        logger.info("Listando clientes")
+        try:
+            cur = self.db.ejecutar("SELECT id, nombre, telefono FROM clientes")
+            return cur.fetchall()
+        except Exception as e:
+            logger.error(f"Error al listar clientes: {e}")
+            raise ErrorValidacion("Error al obtener los clientes.")
+
+    # -------- VETERINARIOS --------
 
     def agregar_veterinario(self, veterinario: Veterinario):
         logger.info(f"Agregando veterinario: {veterinario.nombre}")
+
         if not isinstance(veterinario, Veterinario):
-            logger.error("El objeto no es un veterinario válido.")
             raise ErrorVeterinario("El objeto no es un veterinario válido.")
-        self.veterinarios.append(veterinario)
+
         try:
             # Compatibilidad con esquemas antiguos: comprobar si existe la columna precio_consulta
             cur = self.db.ejecutar("PRAGMA table_info(veterinarios)")
@@ -66,16 +85,28 @@ class ServicioVeterinario:
                     )
             logger.info(f"Veterinario {veterinario.nombre} guardado en la base de datos.")
         except Exception as e:
-            logger.error(f"Error al guardar el veterinario en la base de datos: {e}")
-            raise ErrorVeterinario("Error al guardar el veterinario en la base de datos.")
-        
-    def agregar_cliente(self, cliente: Cliente):
-        if not isinstance(cliente, Cliente):
-            raise ErrorValidacion("El objeto no es un cliente válido.")
+            logger.error(f"Error al guardar el veterinario: {e}")
+            raise ErrorVeterinario("Error al guardar el veterinario.")
 
-        self.clientes.append(cliente)
+    def listar_veterinarios(self):
+        logger.info("Listando veterinarios")
+        try:
+            cur = self.db.ejecutar("SELECT id, nombre, especialidad, telefono FROM veterinarios")
+            return cur.fetchall()
+        except Exception as e:
+            logger.error(f"Error al listar veterinarios: {e}")
+            raise ErrorVeterinario("Error al obtener los veterinarios.")
+
+    # -------- MASCOTAS --------
+
+    def agregar_mascota(self, mascota: Mascota):
+        logger.info(f"Agregando mascota: {mascota.nombre}")
+
+        if not isinstance(mascota, Mascota):
+            raise ErrorMascota("El objeto no es una mascota válida.")
 
         try:
+<<<<<<< HEAD
         
             self.db.ejecutar(
                 "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)",
@@ -87,30 +118,36 @@ class ServicioVeterinario:
             raise ErrorValidacion("Error al guardar el cliente en la base de datos.")
 
 
+=======
+            self.db.ejecutar(
+                "INSERT INTO mascotas (nombre, especie, edad, duenio_id) VALUES (?, ?, ?, ?)",
+                (mascota.nombre, mascota.especie, mascota.edad, mascota.duenio_id)
+            )
+            logger.info(f"Mascota {mascota.nombre} guardada en la base de datos.")
+        except Exception as e:
+            logger.error(f"Error al guardar mascota: {e}")
+            raise ErrorMascota("Error al guardar mascota.")
+>>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
 
     def listar_mascotas(self):
-        logger.info("Listando mascotas desde la base de datos.")
+        logger.info("Listando mascotas")
         try:
             cur = self.db.ejecutar("""
                 SELECT m.id, m.nombre, m.especie, m.edad, c.nombre AS duenio
                 FROM mascotas m
                 LEFT JOIN clientes c ON m.duenio_id = c.id
             """)
-            mascotas = cur.fetchall()
-
-            if not mascotas:
-                logger.warning("No hay mascotas registradas en la base de datos.")
-                raise ErrorMascota("No hay mascotas registradas.")
-
-            return mascotas
+            return cur.fetchall()
         except Exception as e:
             logger.error(f"Error al listar mascotas: {e}")
-            raise ErrorMascota("Error al obtener las mascotas desde la base de datos.")
+            raise ErrorMascota("Error al obtener las mascotas.")
 
+    # -------- ATENCIONES --------
 
-    def listar_veterinarios(self):
-        logger.info("Listando veterinarios desde la base de datos.")
+    def registrar_atencion(self, veterinario_id: int, mascota_id: int, nota: str = ""):
+        logger.info("Registrando atención")
         try:
+<<<<<<< HEAD
             # Compatibilidad: si la columna precio_consulta no existe, obtener solo los campos disponibles
             cur = self.db.ejecutar("PRAGMA table_info(veterinarios)")
             cols = [r[1] for r in cur.fetchall()]
@@ -128,23 +165,33 @@ class ServicioVeterinario:
                 raise ErrorVeterinario("No hay veterinarios registrados.")
 
             return veterinarios
+=======
+            fecha = datetime.now().isoformat(sep=" ", timespec="seconds")
+            self.db.ejecutar(
+                "INSERT INTO atenciones (veterinario_id, mascota_id, fecha, nota) VALUES (?, ?, ?, ?)",
+                (veterinario_id, mascota_id, fecha, nota)
+            )
+            logger.info("Atención registrada correctamente.")
+>>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
         except Exception as e:
-            logger.error(f"Error al listar veterinarios: {e}")
-            raise ErrorVeterinario("Error al obtener los veterinarios desde la base de datos.")
-        
-    def listar_clientes(self):
-        logger.info("Listando clientes desde la base de datos.")
+            logger.error(f"Error al registrar la atención: {e}")
+            raise ErrorValidacion("Error al registrar la atención.")
+
+    def listar_atenciones(self):
+        logger.info("Listando atenciones")
         try:
-            # Eliminamos 'email' de la consulta
-            cur = self.db.ejecutar("SELECT id, nombre, telefono FROM clientes")
-            clientes = cur.fetchall()
-
-            if not clientes:
-                logger.warning("No hay clientes registrados en la base de datos.")
-                raise ErrorValidacion("No hay clientes registrados.")
-
-            return clientes
+            cur = self.db.ejecutar(
+                """
+                SELECT a.id, a.fecha, m.nombre AS mascota, c.nombre AS duenio, a.nota
+                FROM atenciones a
+                LEFT JOIN mascotas m ON a.mascota_id = m.id
+                LEFT JOIN clientes c ON m.duenio_id = c.id
+                ORDER BY a.fecha DESC
+                """
+            )
+            return cur.fetchall()
         except Exception as e:
+<<<<<<< HEAD
             logger.error(f"Error al listar clientes: {e}")
             raise ErrorValidacion("Error al obtener los clientes desde la base de datos.")
 
@@ -453,3 +500,7 @@ class ServicioVeterinario:
             logger.error("Mascota no registrada en el sistema.")
             raise ErrorMascota("Mascota no registrada en el sistema.")
         return veterinario.atender_mascota(mascota)
+=======
+            logger.error(f"Error al listar atenciones: {e}")
+            raise ErrorValidacion("Error al obtener las atenciones.")
+>>>>>>> 2a3e5dd4f6a3a59e1f31c7bac72313eb4ca87178
