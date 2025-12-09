@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mascotas</title>
+</head>
+<body>
+    <h1>Lista de Mascotas</h1>
+    <a href="/mascotas/nueva">Agregar Mascota</a>
+    <ul>
+        {% for mascota in mascotas %}
+            <li>{{ mascota[1] }} - {{ mascota[2] }} - {{ mascota[3] }} años - Dueño: {{ mascota[4] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

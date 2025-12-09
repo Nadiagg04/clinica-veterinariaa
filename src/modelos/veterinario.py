@@ -12,3 +12,5 @@ class Veterinario:
     def atender_mascota(self, mascota):
         
         return f"{self.nombre} está atendiendo a {mascota.nombre}"
+
+

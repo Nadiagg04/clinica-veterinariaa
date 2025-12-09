@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Atenciones</title>
+</head>
+<body>
+    <h1>Historial de Atenciones</h1>
+    <a href="/atenciones/nueva">Registrar Atención</a>
+    <ul>
+        {% for a in atenciones %}
+            <li>ID: {{ a[0] }}, Fecha: {{ a[1] }}, Mascota: {{ a[2] }}, Dueño: {{ a[3] }}, Nota: {{ a[4] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
