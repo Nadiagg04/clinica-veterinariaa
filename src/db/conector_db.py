@@ -1,49 +1,33 @@
 import sqlite3
+from src.utils.excepciones import ErrorConexionDB
+
 
 class ConectorDB:
-    def __init__(self, db_name="clinica.db"):
+    def __init__(self, db_name: str = "clinica.db"):
         self.db_name = db_name
-        self.conn = None
+        self.conn: sqlite3.Connection | None = None
 
-    def conectar(self):
-        if not self.conn:
-            self.conn = sqlite3.connect(self.db_name)
+    def conectar(self) -> sqlite3.Connection:
+        if self.conn is None:
+            try:
+                self.conn = sqlite3.connect(self.db_name)
+            except sqlite3.Error as e:
+                raise ErrorConexionDB(f"Error al conectar con la base de datos: {e}")
         return self.conn
 
-    def ejecutar(self, query, params=None):
+    def ejecutar(self, consulta: str, parametros: tuple = ()):  # retorna cursor
         try:
-            # Always (re)create a connection and store it
-            self.conexion = sqlite3.connect(self.ruta_db)
-            return self.conexion
-        except sqlite3.Error as e:
-            raise ErrorConexionDB(f"Error al conectar con la base de datos: {e}")
-
-    def cerrar(self):
-        if self.conexion:
-            try:
-                self.conexion.close()
-            finally:
-                # Ensure internal reference is cleared so next call reconnects
-                self.conexion = None
-
-    def ejecutar(self, consulta, parametros=()):
-        try:
-            # Ensure we have a usable connection. If the existing connection
-            # was closed elsewhere, operations will raise sqlite3.ProgrammingError
-            # so we attempt to reconnect in that case.
-            if not self.conexion:
-                self.conectar()
-
-            try:
-                cur = self.conexion.cursor()
-                cur.execute(consulta, parametros)
-            except sqlite3.ProgrammingError:
-                # Connection was closed; reconnect and retry once
-                self.conectar()
-                cur = self.conexion.cursor()
-                cur.execute(consulta, parametros)
-
-            self.conexion.commit()
+            conn = self.conectar()
+            cur = conn.cursor()
+            cur.execute(consulta, parametros)
+            conn.commit()
             return cur
         except sqlite3.Error as e:
             raise ErrorConexionDB(f"Error al ejecutar consulta: {e}")
+
+    def cerrar(self) -> None:
+        if self.conn:
+            try:
+                self.conn.close()
+            finally:
+                self.conn = None

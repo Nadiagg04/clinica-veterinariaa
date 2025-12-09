@@ -6,3 +6,7 @@ class Logger:
     @staticmethod
     def error(mensaje):
         print(f"[ERROR] {mensaje}")
+
+
+# Instancia por defecto exportada para uso rápido en el proyecto
+logger = Logger()

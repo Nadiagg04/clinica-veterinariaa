@@ -7,6 +7,7 @@ from src.db.conector_db import ConectorDB
 from datetime import datetime
 
 
+logger = Logger()
 class ServicioVeterinario:
 
     def __init__(self):
@@ -82,8 +83,18 @@ class ServicioVeterinario:
     def listar_veterinarios(self):
         logger.info("Listando veterinarios")
         try:
-            cur = self.db.ejecutar("SELECT id, nombre, especialidad, telefono FROM veterinarios")
-            return cur.fetchall()
+            # Normalizar salida para que siempre tenga 5 campos: (id, nombre, especialidad, telefono, precio_consulta)
+            cur = self.db.ejecutar("PRAGMA table_info(veterinarios)")
+            cols = [r[1] for r in cur.fetchall()]
+            if 'precio_consulta' in cols:
+                cur = self.db.ejecutar("SELECT id, nombre, especialidad, telefono, precio_consulta FROM veterinarios")
+                rows = cur.fetchall()
+            else:
+                cur = self.db.ejecutar("SELECT id, nombre, especialidad, telefono FROM veterinarios")
+                raw = cur.fetchall()
+                rows = [(r[0], r[1], r[2], r[3], 0.0) for r in raw]
+
+            return rows
         except Exception as e:
             logger.error(f"Error al listar veterinarios: {e}")
             raise ErrorVeterinario("Error al obtener los veterinarios.")
@@ -97,15 +108,15 @@ class ServicioVeterinario:
             raise ErrorMascota("El objeto no es una mascota válida.")
 
         try:
-        
+            duenio_id = getattr(mascota, 'duenio_id', None)
             self.db.ejecutar(
-                "INSERT INTO clientes (nombre, telefono) VALUES (?, ?)",
-                (cliente.nombre, cliente.telefono)
+                "INSERT INTO mascotas (nombre, especie, edad, duenio_id) VALUES (?, ?, ?, ?)",
+                (mascota.nombre, mascota.especie, int(mascota.edad), duenio_id)
             )
-            print(f"Cliente {cliente.nombre} guardado en la base de datos.")
+            logger.info(f"Mascota {mascota.nombre} guardada en la base de datos.")
         except Exception as e:
-            logger.error(f"Error al guardar el cliente en la base de datos: {e}")
-            raise ErrorValidacion("Error al guardar el cliente en la base de datos.")
+            logger.error(f"Error al guardar la mascota en la base de datos: {e}")
+            raise ErrorMascota("Error al guardar la mascota en la base de datos.")
 
 
 
