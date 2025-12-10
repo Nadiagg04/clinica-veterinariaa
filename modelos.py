@@ -2,6 +2,16 @@ from conector import ConectorDB
 
 class Mascota:
     def __init__(self, nombre, especie, edad, dueno, id=None):
+        # Validaciones
+        if not nombre or not nombre.strip():
+            raise ValueError("El nombre de la mascota no puede estar vacío.")
+        if not especie or not especie.strip():
+            raise ValueError("La especie de la mascota no puede estar vacía.")
+        if not isinstance(edad, int) or edad < 0:
+            raise ValueError("La edad debe ser un número entero mayor o igual a 0.")
+        if not dueno or not dueno.strip():
+            raise ValueError("El nombre del dueño no puede estar vacío.")
+
         self.id = id
         self.nombre = nombre
         self.especie = especie
@@ -53,10 +63,14 @@ class Mascota:
             cursor.execute("DELETE FROM Mascota WHERE id=?", (self.id,))
             conexion.commit()
             db.cerrar()
-
-
 class Veterinario:
     def __init__(self, nombre, especialidad, id=None):
+        # Validaciones
+        if not nombre or not nombre.strip():
+            raise ValueError("El nombre del veterinario no puede estar vacío.")
+        if not especialidad or not especialidad.strip():
+            raise ValueError("La especialidad no puede estar vacía.")
+
         self.id = id
         self.nombre = nombre
         self.especialidad = especialidad
@@ -81,7 +95,6 @@ class Veterinario:
             conexion.commit()
             db.cerrar()
 
-    # Leer todos los registros
     @staticmethod
     def obtener_todos():
         db = ConectorDB()
@@ -95,7 +108,6 @@ class Veterinario:
             db.cerrar()
         return vets
 
-    # Eliminar registro
     def eliminar(self):
         if self.id is None:
             return
@@ -109,11 +121,20 @@ class Veterinario:
 
 class Producto:
     def __init__(self, nombre, precio, stock, id=None):
+        # Validaciones
+        if not nombre or not nombre.strip():
+            raise ValueError("El nombre del producto no puede estar vacío.")
+        if precio < 0:
+            raise ValueError("El precio del producto no puede ser negativo.")
+        if not isinstance(stock, int) or stock < 0:
+            raise ValueError("El stock debe ser un número entero mayor o igual a 0.")
+
         self.id = id
         self.nombre = nombre
         self.precio = precio
         self.stock = stock
 
+    # Crear o actualizar
     def guardar(self):
         db = ConectorDB()
         conexion = db.conectar()

@@ -9,17 +9,26 @@ from src.servicios.servicio_veterinario import ServicioVeterinario
 servicio = ServicioVeterinario()
 
 # Crear personas y clientes
-persona1 = Persona("Ana", "600111222")
-cliente1 = Cliente(persona1)
-servicio.agregar_cliente(cliente1)
+try:
+    persona1 = Persona("Ana", "600111222")
+    cliente1 = Cliente(persona1)
+    servicio.agregar_cliente(cliente1)
+except ValueError as e:
+    print("Error al agregar cliente:", e)
 
 # Crear veterinarios
-vet1 = Veterinario("Juan Pérez", "Pediatría", "600333444")
-servicio.agregar_veterinario(vet1)
+try:
+    vet1 = Veterinario("Juan Pérez", "Pediatría", "600333444")
+    servicio.agregar_veterinario(vet1)
+except ValueError as e:
+    print("Error al agregar veterinario:", e)
 
 # Crear mascotas
-mascota1 = Mascota("Firulais", "Perro", 5, cliente1)
-servicio.agregar_mascota(mascota1)
+try:
+    mascota1 = Mascota("Firulais", "Perro", 5, cliente1)
+    servicio.agregar_mascota(mascota1)
+except ValueError as e:
+    print("Error al agregar mascota:", e)
 
 # Mostrar datos
 print("=== Clientes registrados ===")
@@ -34,6 +43,9 @@ print("\n=== Mascotas registradas ===")
 for m in servicio.listar_mascotas():
     print("-", m)
 
-print("\n=== Simulación de atención ===")
-print(servicio.atender_mascota(vet1, mascota1))
-
+# Simulación de atención
+try:
+    print("\n=== Simulación de atención ===")
+    print(servicio.atender_mascota(vet1, mascota1))
+except ValueError as e:
+    print("Error en la atención:", e)

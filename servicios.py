@@ -46,6 +46,7 @@ class ServicioVeterinario:
         veterinario.eliminar()
 
 
+
 class ServicioProducto:
     @staticmethod
     def crear_producto(nombre, precio, stock):
@@ -67,4 +68,3 @@ class ServicioProducto:
     @staticmethod
     def eliminar(producto):
         producto.eliminar()
-
