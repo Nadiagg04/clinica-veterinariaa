@@ -21,29 +21,76 @@ st.markdown(
     """
     <style>
     :root { --brand:#2b9c6f; --accent:#7bd389; --bg:#f7fff7; --card:#ffffff; --muted:#6b6b6b; --text:#0b2f1a }
-    .stApp { background: linear-gradient(180deg, #f0f8f2 0%, #f7fff7 100%); color: var(--text); }
+    .stApp { background: linear-gradient(180deg, #f0f8f2 0%, #f7fff7 100%); }
     .stApp, .stApp * { color: var(--text) !important; }
     .header-sub { color:var(--muted); text-align:center; margin-top:-10px; margin-bottom:18px; font-size:0.95rem }
     .stSidebar { background: linear-gradient(180deg, #eaf7f0, #dff3e8); }
     .card { color: var(--text); background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom:10px; }
     .small-muted { color:var(--muted); font-size:0.9rem; }
-    .stButton>button { background-color: var(--brand) !important; color: white !important; border-radius:6px !important; }
-    .stAlert, .stInfo, .stSuccess { color: var(--text) !important; }
-    /* Formularios: forzar fondo claro y texto oscuro para inputs/textarea/select */
-    input[type="text"], input[type="number"], input[type="tel"], input[type="search"], textarea, select {
+
+    /* Botones: verde con texto/símbolos blancos */
+    .stButton>button, .stButton button {
+        background-color: #2ecc71 !important;
+        color: #ffffff !important;
+        border-radius:6px !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    /* Si el botón contiene iconos/svg/img, forzarlos a mostrarse en blanco */
+    .stButton>button svg, .stButton>button img {
+        filter: brightness(0) invert(1) !important;
+    }
+
+    /* Formularios: fondo blanco y texto negro para todo el form y sus hijos */
+    form, .stForm, form * {
         background: #ffffff !important;
-        color: var(--text) !important;
+        color: #000000 !important;
+    }
+
+    /* Inputs/textarea/select dentro de formularios (y en general) */
+    form input, form textarea, form select,
+    input[type="text"], input[type="number"], input[type="tel"], input[type="search"], textarea, select,
+    .stTextInput input, .stNumberInput input, .stTextArea textarea, .stSelectbox select {
+        background: #ffffff !important;
+        color: #000000 !important;
         border: 1px solid #d6e6dc !important;
         border-radius: 6px !important;
         padding: 8px !important;
     }
+
     textarea { min-height: 80px !important; }
-    /* Placeholder color */
+    /* Placeholder color (más suave) */
     ::placeholder { color: #7b8b7a !important; }
-    /* Streamlit-specific wrappers */
-    .stTextInput input, .stNumberInput input, .stTextArea textarea, .stSelectbox select {
+
+    /* Alert/info boxes keep original text color (variable) */
+    .stAlert, .stInfo, .stSuccess { color: var(--text) !important; }
+    
+    /* Number input steppers (+ / -): asegurar que los íconos/símbolos sean blancos */
+    /* targeting Streamlit-rendered stepper buttons (aria-labels used by Streamlit) */
+    button[aria-label="increase"], button[aria-label="decrease"] {
+        background: transparent !important;
+        border: none !important;
+        color: #ffffff !important;
+    }
+    button[aria-label="increase"] svg, button[aria-label="decrease"] svg {
+        filter: brightness(0) invert(1) !important;
+    }
+    /* Fallback: also target buttons inside number input wrappers */
+    .stNumberInput button, .stNumberInput button svg {
+        color: #ffffff !important;
+    }
+    
+    /* Selectbox: forzar fondo blanco y texto negro (cubre diferentes renderizados) */
+    .stSelectbox, .stSelectbox * ,
+    .stSelectbox div[role="button"], .stSelectbox div[role="combobox"], .stSelectbox div[role="listbox"],
+    .stSelectbox select {
         background: #ffffff !important;
-        color: var(--text) !important;
+        color: #000000 !important;
+    }
+    /* Multi-select too */
+    .stMultiSelect, .stMultiSelect * {
+        background: #ffffff !important;
+        color: #000000 !important;
     }
     </style>
     """,
@@ -313,12 +360,11 @@ elif menu == "Veterinarios":
 elif menu == "Productos":
     st.header("Catálogo de Productos")
 
-    with st.form(key="form_producto"):
-        nombre = st.text_input("Nombre del producto")
-        descripcion = st.text_area("Descripción (opcional)")
-        precio = st.number_input("Precio (€)", min_value=0.0, value=0.0, step=0.5, format="%.2f")
-        stock = st.number_input("Stock", min_value=0, value=0, step=1)
-        submit = st.form_submit_button("Agregar producto")
+    nombre = st.text_input("Nombre del producto")
+    descripcion = st.text_area("Descripción (opcional)")
+    precio = st.number_input("Precio (€)", min_value=0.0, value=0.0, step=0.5, format="%.2f")
+    stock = st.number_input("Stock", min_value=0, value=0, step=1)
+    submit = st.button("Agregar producto")
 
     if submit:
         if nombre:
