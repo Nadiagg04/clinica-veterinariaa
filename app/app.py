@@ -4,6 +4,10 @@ import hashlib
 import sqlite3
 import os
 from datetime import datetime
+import sys
+
+# Add parent directory to path to import src modules
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # ===================== CONFIGURACIÓN INICIAL =====================
 st.set_page_config(
@@ -145,7 +149,7 @@ def mostrar_login():
         # Credenciales de demostración
         with st.expander("Credenciales de prueba", expanded=False):
             st.markdown("""
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #4CAF50;">
+            <div style="padding: 15px; border-radius: 5px; border-left: 4px solid;">
             <p><strong>Administrador:</strong></p>
             <p>Usuario: <code>admin</code></p>
             <p>Contraseña: <code>admin123</code></p>
@@ -203,7 +207,7 @@ def mostrar_registro():
                         st.error(f"Error: {message}")
         
         # Información importante
-        with st.expander("ℹ️ Información sobre el registro", expanded=False):
+        with st.expander("Información sobre el registro", expanded=False):
             st.markdown("""
             **Proceso de registro:**
             1. Complete el formulario con sus datos
@@ -286,7 +290,7 @@ def login_page():
     
     # Encabezado
     st.markdown('<div class="header-container">', unsafe_allow_html=True)
-    st.markdown('<div class="logo">🐾</div>', unsafe_allow_html=True)
+    st.markdown('<div class="logo"></div>', unsafe_allow_html=True)
     st.markdown('<h1 style="text-align: center;">Clínica Veterinaria</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; color: #666;">Sistema de Gestión Integral</p>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -296,13 +300,13 @@ def login_page():
     with col2:
         tab1, tab2 = st.columns(2)
         with tab1:
-            if st.button("🔐 Iniciar Sesión", 
+            if st.button("Iniciar Sesión", 
                         use_container_width=True,
                         type="primary" if st.session_state['current_tab'] == 'login' else "secondary"):
                 st.session_state['current_tab'] = 'login'
                 st.rerun()
         with tab2:
-            if st.button("📝 Registrarse", 
+            if st.button("Registrarse", 
                         use_container_width=True,
                         type="primary" if st.session_state['current_tab'] == 'register' else "secondary"):
                 st.session_state['current_tab'] = 'register'
@@ -493,7 +497,7 @@ def main_app():
             try:
                 vets = servicio.listar_veterinarios()
                 if vets:
-                    df_vets = pd.DataFrame(vets, columns=["ID", "Nombre", "Especialidad", "Teléfono"])
+                    df_vets = pd.DataFrame(vets, columns=["ID", "Nombre", "Especialidad", "Teléfono", "Precio Consulta"])
                     st.dataframe(df_vets, use_container_width=True, hide_index=True)
                 else:
                     st.info("No hay veterinarios registrados")
@@ -506,13 +510,14 @@ def main_app():
                 nombre = st.text_input("Nombre del veterinario")
                 especialidad = st.text_input("Especialidad")
                 telefono = st.text_input("Teléfono")
+                precio_consulta = st.number_input("Precio de consulta", min_value=0.0, step=0.01, format="%.2f")
                 
                 submit = st.form_submit_button("Guardar Veterinario", type="primary")
                 
                 if submit:
                     if nombre and especialidad and telefono:
                         try:
-                            vet = Veterinario(nombre, especialidad, telefono)
+                            vet = Veterinario(nombre, especialidad, telefono, precio_consulta)
                             servicio.agregar_veterinario(vet)
                             st.success(f"Veterinario '{nombre}' guardado correctamente")
                             st.rerun()
@@ -532,7 +537,7 @@ def main_app():
             try:
                 mascotas = servicio.listar_mascotas()
                 if mascotas:
-                    df_mascotas = pd.DataFrame(mascotas, columns=["ID", "Nombre", "Especie", "Edad", "Dueño ID"])
+                    df_mascotas = pd.DataFrame(mascotas, columns=["ID", "Nombre", "Especie", "Edad", "Dueño"])
                     st.dataframe(df_mascotas, use_container_width=True, hide_index=True)
                 else:
                     st.info("No hay mascotas registradas")
