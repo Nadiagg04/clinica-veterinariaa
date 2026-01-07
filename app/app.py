@@ -1,475 +1,828 @@
-import sys
-import os
 import streamlit as st
+import pandas as pd
+import hashlib
+import sqlite3
+import os
+from datetime import datetime
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.servicios.servicio_veterinario import ServicioVeterinario
-from src.repositorio.repositorio_mascotas import RepositorioMascotas
-from src.modelos.mascota import Mascota
-from src.modelos.persona import Persona
-from src.modelos.cliente import Cliente
-from src.modelos.veterinario import Veterinario
-
-repo = RepositorioMascotas()
-servicio = ServicioVeterinario()
-
-st.title("Clínica Veterinaria Patitas")
-
-# Estilos personalizados para que la UI se ve más acorde al tema
-st.markdown(
-    """
-    <style>
-    :root { --brand:#2b9c6f; --accent:#7bd389; --bg:#f7fff7; --card:#ffffff; --muted:#6b6b6b; --text:#0b2f1a }
-    .stApp { background: linear-gradient(180deg, #f0f8f2 0%, #f7fff7 100%); }
-    .stApp, .stApp * { color: var(--text) !important; }
-    .header-sub { color:var(--muted); text-align:center; margin-top:-10px; margin-bottom:18px; font-size:0.95rem }
-    .stSidebar { background: linear-gradient(180deg, #eaf7f0, #dff3e8); }
-    .card { color: var(--text); background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom:10px; }
-    .small-muted { color:var(--muted); font-size:0.9rem; }
-
-    /* Botones: verde con texto/símbolos blancos */
-    .stButton>button, .stButton button {
-        background-color: #2ecc71 !important;
-        color: #ffffff !important;
-        border-radius:6px !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
-    /* Si el botón contiene iconos/svg/img, forzarlos a mostrarse en blanco */
-    .stButton>button svg, .stButton>button img {
-        filter: brightness(0) invert(1) !important;
-    }
-
-    /* Formularios: fondo blanco y texto negro para todo el form y sus hijos */
-    form, .stForm, form * {
-        background: #ffffff !important;
-        color: #000000 !important;
-    }
-
-    /* Inputs/textarea/select dentro de formularios (y en general) */
-    form input, form textarea, form select,
-    input[type="text"], input[type="number"], input[type="tel"], input[type="search"], textarea, select,
-    .stTextInput input, .stNumberInput input, .stTextArea textarea, .stSelectbox select {
-        background: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #d6e6dc !important;
-        border-radius: 6px !important;
-        padding: 8px !important;
-    }
-
-    textarea { min-height: 80px !important; }
-    /* Placeholder color (más suave) */
-    ::placeholder { color: #7b8b7a !important; }
-
-    /* Alert/info boxes keep original text color (variable) */
-    .stAlert, .stInfo, .stSuccess { color: var(--text) !important; }
-    
-    /* Number input steppers (+ / -): asegurar que los íconos/símbolos sean blancos */
-    /* targeting Streamlit-rendered stepper buttons (aria-labels used by Streamlit) */
-    button[aria-label="increase"], button[aria-label="decrease"] {
-        background: transparent !important;
-        border: none !important;
-        color: #ffffff !important;
-    }
-    button[aria-label="increase"] svg, button[aria-label="decrease"] svg {
-        filter: brightness(0) invert(1) !important;
-    }
-    /* Fallback: also target buttons inside number input wrappers */
-    .stNumberInput button, .stNumberInput button svg {
-        color: #ffffff !important;
-    }
-    
-    /* Selectbox: forzar fondo blanco y texto negro (cubre diferentes renderizados) */
-    .stSelectbox, .stSelectbox * ,
-    .stSelectbox div[role="button"], .stSelectbox div[role="combobox"], .stSelectbox div[role="listbox"],
-    .stSelectbox select {
-        background: #ffffff !important;
-        color: #000000 !important;
-    }
-    /* Multi-select too */
-    .stMultiSelect, .stMultiSelect * {
-        background: #ffffff !important;
-        color: #000000 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
+# ===================== CONFIGURACIÓN INICIAL =====================
+st.set_page_config(
+    page_title="Clínica Veterinaria",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown('<div class="header-sub">Gestión clínica — Patitas</div>', unsafe_allow_html=True)
-
-menu = st.sidebar.radio("Menú", ["Inicio", "Registrar Mascota", "Listar Mascotas", "Listar Clientes", "Veterinarios", "Productos", "Cuentas"])
-
-# Helper: rerun safely across Streamlit versions
-def safe_rerun():
-    if hasattr(st, 'experimental_rerun'):
-        try:
-            st.experimental_rerun()
-        except Exception:
-            # fallback: prompt manual refresh
-            st.info('Recarga la página para aplicar cambios.')
-    else:
-        st.info('Recarga la página para aplicar cambios.')
-
-if menu == "Inicio":
-    st.header("Bienvenido a la Clínica Veterinaria")
-    try:
-        mascotas = servicio.listar_mascotas()
-        total_mascotas = len(mascotas)
-    except Exception:
-        total_mascotas = 0
-
-    try:
-        clientes = servicio.listar_clientes()
-        total_clientes = len(clientes)
-    except Exception:
-        total_clientes = 0
-
-    st.subheader("Resumen")
-    st.write(f"- Mascotas registradas: {total_mascotas}")
-    st.write(f"- Clientes registrados: {total_clientes}")
-
-elif menu == "Registrar Mascota":
-    st.header("Registrar una mascota")
-
-    nombre = st.text_input("Nombre de la mascota")
-    especie = st.text_input("Especie")
-    edad = st.number_input("Edad", min_value=0, max_value=50, step=1)
-    nombre_dueño = st.text_input("Nombre del dueño")
-    telefono_dueño = st.text_input("Teléfono del dueño")
-
-    if st.button("Guardar"):
-        if nombre and especie and nombre_dueño and telefono_dueño:
-            # Registrar al cliente (dueño) usando los datos del formulario
-            persona_dueño = Persona(nombre_dueño, telefono_dueño)
-            cliente = Cliente(persona_dueño)
-            try:
-                servicio.agregar_cliente(cliente)
-            except Exception as e:
-                st.error(f"Error al registrar el cliente: {e}")
-            else:
-                # Obtener el ID del dueño recién insertado
-                try:
-                    cur = servicio.db.ejecutar(
-                        "SELECT id FROM clientes WHERE nombre = ? AND telefono = ? ORDER BY id DESC LIMIT 1",
-                        (nombre_dueño, telefono_dueño)
-                    )
-                    row = cur.fetchone()
-                    if row:
-                        duenio_id = row[0]
-                    else:
-                        st.error("No se pudo obtener el ID del dueño.")
-                        duenio_id = None
-                except Exception as e:
-                    st.error(f"Error al consultar el dueño: {e}")
-                    duenio_id = None
-
-                if duenio_id is not None:
-                    mascota = Mascota(nombre, especie, edad, duenio_id)
-                    try:
-                        servicio.agregar_mascota(mascota)
-                        st.success(f"Mascota registrada correctamente: {nombre}")
-                    except Exception as e:
-                        st.error(f"Error al registrar la mascota: {e}")
-        else:
-            st.error("Faltan datos obligatorios.")
-
-
-elif menu == "Listar Mascotas":
-    st.header("Listado de mascotas registradas")
-
-    mascotas = servicio.listar_mascotas()
+# ===================== BASE DE DATOS DE USUARIOS =====================
+def init_usuario_db():
+    """Inicializa la base de datos de usuarios"""
+    # Crear directorio database si no existe
+    os.makedirs("database", exist_ok=True)
     
-    if not mascotas:
-        st.info("Aún no hay mascotas registradas.")
-    else:
-        for m in mascotas:
-            id_, nombre, especie, edad, duenio = m
-            st.markdown(f"<div class='card'><strong>{nombre}</strong> <span class='small-muted'>({especie}, {edad} años)</span><br/><span class='small-muted'>Dueño: {duenio}</span></div>", unsafe_allow_html=True)
-            if st.button("Eliminar", key=f"del_mascota_{id_}"):
-                try:
-                    servicio.eliminar_mascota(id_)
-                    st.success(f"Mascota {nombre} eliminada")
-                    safe_rerun()
-                except Exception as e:
-                    st.error(f"Error al eliminar mascota: {e}")
+    conn = sqlite3.connect("database/usuarios.db")
+    cursor = conn.cursor()
+    
+    # Tabla de usuarios
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        rol TEXT DEFAULT 'veterinario',
+        email TEXT,
+        activo INTEGER DEFAULT 1,
+        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # Verificar si ya existen usuarios
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    if cursor.fetchone()[0] == 0:
+        # Crear usuarios iniciales
+        usuarios_iniciales = [
+            ('admin', hash_password('admin123'), 'Administrador Principal', 'admin', 'admin@veterinaria.com'),
+            ('vet1', hash_password('vet123'), 'Dr. Carlos López', 'veterinario', 'vet1@clinicavet.com'),
+            ('vet2', hash_password('vet456'), 'Dra. Ana Martínez', 'veterinario', 'vet2@clinicavet.com')
+        ]
+        
+        cursor.executemany(
+            'INSERT INTO usuarios (username, password, nombre, rol, email) VALUES (?, ?, ?, ?, ?)',
+            usuarios_iniciales
+        )
+    
+    conn.commit()
+    conn.close()
 
-elif menu == "Listar Clientes":
-    st.header("Listado de clientes registrados")
+def hash_password(password):
+    """Crea hash de la contraseña"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, hashed):
+    """Verifica la contraseña"""
+    return hash_password(password) == hashed
+
+# ===================== FUNCIÓN PARA REGISTRAR USUARIOS =====================
+def registrar_usuario(username, password, nombre, email=None, rol='veterinario'):
+    """Registra un nuevo usuario en la base de datos"""
+    conn = sqlite3.connect("database/usuarios.db")
+    cursor = conn.cursor()
+    
     try:
-        clientes = servicio.listar_clientes()
-        if not clientes:
-            st.info("Aún no hay clientes registrados.")
-        else:
-            for c in clientes:
-                id_, nombre, telefono = c
-                st.markdown(f"<div class='card'><strong>{nombre}</strong><br/><span class='small-muted'>Tel: {telefono}</span></div>", unsafe_allow_html=True)
-                if st.button("Eliminar", key=f"del_cliente_{id_}"):
-                    try:
-                        servicio.eliminar_cliente(id_)
-                        st.success(f"Cliente {nombre} eliminado")
-                        safe_rerun()
-                    except Exception as e:
-                        st.error(f"Error al eliminar cliente: {e}")
-    except Exception as e:
-        st.error(f"No se pudieron cargar los clientes: {e}")
+        # Verificar si el usuario ya existe
+        cursor.execute("SELECT id FROM usuarios WHERE username = ? OR email = ?", 
+                      (username, email))
+        if cursor.fetchone():
+            conn.close()
+            return False, "El nombre de usuario o email ya están registrados"
+        
+        # Insertar nuevo usuario (activo por defecto)
+        cursor.execute(
+            """INSERT INTO usuarios (username, password, nombre, email, rol, activo) 
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (username, hash_password(password), nombre, email, rol, 1)
+        )
+        
+        conn.commit()
+        conn.close()
+        return True, "¡Usuario registrado exitosamente! Ya puedes iniciar sesión."
+    except sqlite3.Error as e:
+        conn.close()
+        return False, f"Error en la base de datos: {str(e)}"
 
-elif menu == "Veterinarios":
-    st.header("Veterinarios")
+# ===================== FUNCIONES DE AUTENTICACIÓN =====================
+def check_login(username, password):
+    """Verifica las credenciales del usuario"""
+    conn = sqlite3.connect("database/usuarios.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT id, username, password, nombre, rol FROM usuarios WHERE username = ? AND activo = 1",
+        (username,)
+    )
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user and verify_password(password, user['password']):
+        return {
+            'id': user['id'],
+            'username': user['username'],
+            'nombre': user['nombre'],
+            'rol': user['rol']
+        }
+    return None
 
-    accion = st.radio("Acción", ["Registrar Veterinario", "Listar Veterinarios", "Atender Mascota", "Historial de consultas"])
+def mostrar_login():
+    """Muestra el formulario de login"""
+    with st.container():
+        st.markdown('<div class="form-container">', unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            st.subheader("Iniciar Sesión")
+            
+            username = st.text_input("Usuario", placeholder="Ingrese su nombre de usuario")
+            password = st.text_input("Contraseña", type="password", placeholder="Ingrese su contraseña")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                remember = st.checkbox("Recordar mi sesión", value=True)
+            
+            submit = st.form_submit_button("Acceder al Sistema", type="primary", use_container_width=True)
+            
+            if submit:
+                if not username or not password:
+                    st.error("Por favor ingrese usuario y contraseña")
+                else:
+                    user = check_login(username, password)
+                    if user:
+                        st.session_state['logged_in'] = True
+                        st.session_state['user'] = user
+                        st.success(f"¡Bienvenido, {user['nombre']}!")
+                        st.rerun()
+                    else:
+                        st.error("Usuario o contraseña incorrectos")
+        
+        # Credenciales de demostración
+        with st.expander("Credenciales de prueba", expanded=False):
+            st.markdown("""
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #4CAF50;">
+            <p><strong>Administrador:</strong></p>
+            <p>Usuario: <code>admin</code></p>
+            <p>Contraseña: <code>admin123</code></p>
+            <p><strong>Veterinarios:</strong></p>
+            <p>Usuario: <code>vet1</code> / <code>vet2</code></p>
+            <p>Contraseña: <code>vet123</code> / <code>vet456</code></p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    if accion == "Registrar Veterinario":
-        nombre = st.text_input("Nombre del veterinario")
-        especialidad = st.text_input("Especialidad")
-        telefono = st.text_input("Teléfono")
-        precio_consulta = st.number_input("Precio de consulta (€)", min_value=0.0, value=0.0, step=0.5, format="%.2f")
+def mostrar_registro():
+    """Muestra el formulario de registro"""
+    with st.container():
+        st.markdown('<div class="form-container">', unsafe_allow_html=True)
+        
+        with st.form("register_form"):
+            st.subheader("Crear Nueva Cuenta")
+            
+            nombre = st.text_input("Nombre completo", placeholder="Ej: Dr. Carlos López")
+            email = st.text_input("Correo electrónico", placeholder="ejemplo@clinicavet.com")
+            username = st.text_input("Nombre de usuario", placeholder="Elige un nombre de usuario único")
+            password = st.text_input("Contraseña", type="password", placeholder="Mínimo 6 caracteres")
+            confirm_password = st.text_input("Confirmar contraseña", type="password", placeholder="Repite tu contraseña")
+            
+            rol = st.selectbox("Tipo de cuenta", 
+                             ["veterinario", "asistente", "recepcionista"],
+                             help="Los usuarios 'admin' solo pueden ser creados por administradores")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                aceptar_terminos = st.checkbox("Acepto los términos", value=True)
+            
+            submit = st.form_submit_button("Crear Mi Cuenta", type="primary", use_container_width=True)
+            
+            if submit:
+                # Validaciones
+                if not all([nombre, email, username, password, confirm_password]):
+                    st.error("Por favor complete todos los campos")
+                elif password != confirm_password:
+                    st.error("Las contraseñas no coinciden")
+                elif len(password) < 6:
+                    st.error("La contraseña debe tener al menos 6 caracteres")
+                elif not aceptar_terminos:
+                    st.error("Debe aceptar los términos y condiciones")
+                else:
+                    # Intentar registrar
+                    success, message = registrar_usuario(username, password, nombre, email, rol)
+                    if success:
+                        st.success(message)
+                        # Esperar 2 segundos y cambiar a login
+                        st.session_state['current_tab'] = 'login'
+                        st.rerun()
+                    else:
+                        st.error(f"Error: {message}")
+        
+        # Información importante
+        with st.expander("ℹ️ Información sobre el registro", expanded=False):
+            st.markdown("""
+            **Proceso de registro:**
+            1. Complete el formulario con sus datos
+            2. Su cuenta será creada inmediatamente
+            3. Puede iniciar sesión con sus credenciales
+            
+            **Nota importante:**
+            - Las cuentas de tipo "admin" solo pueden ser creadas por administradores existentes.
+            - Si tiene problemas, contacte al administrador del sistema.
+            """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        if st.button("Guardar veterinario"):
-            if nombre and especialidad:
-                vet = Veterinario(nombre, especialidad, telefono, precio_consulta)
-                try:
-                    servicio.agregar_veterinario(vet)
-                    st.success(f"Veterinario registrado: {nombre}")
-                except Exception as e:
-                    st.error(f"Error al registrar el veterinario: {e}")
-            else:
-                st.error("Faltan datos obligatorios: nombre o especialidad.")
+def login_page():
+    """Página principal con Login y Sign Up"""
+    
+    # Inicializar estado de pestaña
+    if 'current_tab' not in st.session_state:
+        st.session_state['current_tab'] = 'login'
+    
+    # CSS mejorado
+    st.markdown("""
+    <style>
+    .main-container {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+    }
+    .header-container {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .tab-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+    .tab-button {
+        padding: 12px 40px;
+        border: none;
+        background: #f0f0f0;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: #666;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    .tab-button:hover {
+        background: #e0e0e0;
+        transform: translateY(-2px);
+    }
+    .tab-button.active {
+        background: #4CAF50;
+        color: white;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    .form-container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-top: 20px;
+    }
+    .logo {
+        font-size: 48px;
+        margin-bottom: 10px;
+    }
+    .footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #666;
+        font-size: 0.9em;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    
+    # Encabezado
+    st.markdown('<div class="header-container">', unsafe_allow_html=True)
+    st.markdown('<div class="logo">🐾</div>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align: center;">Clínica Veterinaria</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; color: #666;">Sistema de Gestión Integral</p>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Botones de pestaña
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        tab1, tab2 = st.columns(2)
+        with tab1:
+            if st.button("🔐 Iniciar Sesión", 
+                        use_container_width=True,
+                        type="primary" if st.session_state['current_tab'] == 'login' else "secondary"):
+                st.session_state['current_tab'] = 'login'
+                st.rerun()
+        with tab2:
+            if st.button("📝 Registrarse", 
+                        use_container_width=True,
+                        type="primary" if st.session_state['current_tab'] == 'register' else "secondary"):
+                st.session_state['current_tab'] = 'register'
+                st.rerun()
+    
+    # Mostrar formulario según pestaña seleccionada
+    if st.session_state['current_tab'] == 'login':
+        mostrar_login()
+    else:
+        mostrar_registro()
+    
+    # Pie de página
+    st.markdown('<div class="footer">', unsafe_allow_html=True)
+    st.markdown('---')
+    st.markdown('<p>© 2024 Clínica Veterinaria. Todos los derechos reservados.</p>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    elif accion == "Listar Veterinarios":
+def logout():
+    """Cierra la sesión"""
+    st.session_state['logged_in'] = False
+    st.session_state['user'] = None
+    st.rerun()
+
+# ===================== PÁGINA PRINCIPAL =====================
+def main_app():
+    """Aplicación principal después del login"""
+    # Importar aquí para evitar errores si no hay login
+    from src.servicios.servicio_veterinario import ServicioVeterinario
+    from src.modelos.cliente import Cliente
+    from src.modelos.veterinario import Veterinario
+    from src.modelos.mascota import Mascota
+    
+    servicio = ServicioVeterinario()
+    user = st.session_state['user']
+    
+    # Sidebar con información del usuario
+    with st.sidebar:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 20px; 
+                    border-radius: 10px; 
+                    color: white; 
+                    margin-bottom: 20px;">
+            <h3>¡Hola, {user['nombre']}!</h3>
+            <p>Rol: {user['rol'].capitalize()}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Cerrar Sesión", use_container_width=True):
+            logout()
+        
+        st.markdown("---")
+        
+        # Menú de navegación
+        menu_options = ["Dashboard", "Clientes", "Veterinarios", "Mascotas", "Atenciones"]
+        
+        if user['rol'] == 'admin':
+            menu_options.append("Administración")
+        
+        choice = st.radio(
+            "Navegación",
+            menu_options,
+            label_visibility="collapsed"
+        )
+    
+    # ===================== DASHBOARD =====================
+    if choice == "Dashboard":
+        st.title("Dashboard")
+        
+        # Métricas principales
+        col1, col2, col3, col4 = st.columns(4)
+        
         try:
-            veterinarios = servicio.listar_veterinarios()
-            if not veterinarios:
-                st.info("Aún no hay veterinarios registrados.")
-            else:
-                for v in veterinarios:
-                    id_, nombre, especialidad, telefono, precio = v
-                    st.markdown(f"<div class='card'><strong>{nombre}</strong><br/><span class='small-muted'>{especialidad} — Tel: {telefono}</span><div class='small-muted'>Precio consulta: {float(precio):.2f} €</div></div>", unsafe_allow_html=True)
-                    if st.button("Eliminar", key=f"del_vet_{id_}"):
-                        try:
-                            servicio.eliminar_veterinario(id_)
-                            st.success(f"Veterinario {nombre} eliminado")
-                            safe_rerun()
-                        except Exception as e:
-                            st.error(f"Error al eliminar veterinario: {e}")
-        except Exception as e:
-            st.error(f"No se pudieron cargar los veterinarios: {e}")
-
-    elif accion == "Atender Mascota":
-        # Cargar veterinarios y mascotas desde la BD
-        try:
-            vets = servicio.listar_veterinarios()
-        except Exception:
-            vets = []
-
+            clientes = servicio.listar_clientes()
+            with col1:
+                st.metric("Clientes", len(clientes))
+        except:
+            with col1:
+                st.metric("Clientes", 0)
+        
         try:
             mascotas = servicio.listar_mascotas()
-        except Exception:
-            mascotas = []
-
-        if not vets:
-            st.info("No hay veterinarios disponibles. Registra uno primero.")
-        elif not mascotas:
-            st.info("No hay mascotas registradas.")
-        else:
-            vet_options = {f"{v[0]} - {v[1]} ({v[2]})": v for v in vets}
-            mas_options = {f"{m[0]} - {m[1]} ({m[2]})": m for m in mascotas}
-
-            vet_sel = st.selectbox("Selecciona veterinario", list(vet_options.keys()))
-            mas_sel = st.selectbox("Selecciona mascota", list(mas_options.keys()))
-
-            # obtener precio por defecto del veterinario seleccionado
-            selected_vrow = vet_options.get(vet_sel)
-
-            nota = st.text_area("Notas / Observaciones (opcional)")
-            default_precio = float(selected_vrow[4]) if selected_vrow and len(selected_vrow) > 4 else 0.0
-            precio = st.number_input("Precio base (sin IVA)", min_value=0.0, value=default_precio, step=0.5, format="%.2f")
-            iva_sel = st.selectbox("IVA (%)", [0, 5, 10, 21], index=3)
-
-            if st.button("Atender"):
-                vrow = vet_options[vet_sel]
-                mrow = mas_options[mas_sel]
-
-                # Crear instancias en memoria para la acción (no duplicar en BD)
-                # vrow: (id, nombre, especialidad, telefono, precio_consulta)
-                precio_vet = float(vrow[4]) if len(vrow) > 4 else 0.0
-                vet_obj = Veterinario(vrow[1], vrow[2], vrow[3], precio_vet)
-                # Attach an id attribute for tracking
-                setattr(vet_obj, 'id', vrow[0])
-                if all((getattr(v, 'id', None) != vrow[0] for v in servicio.veterinarios)):
-                    servicio.veterinarios.append(vet_obj)
-
-                # Crear mascota en memoria
-                m_id, m_nombre, m_especie, m_edad, m_duenio = mrow
-                mas_obj = Mascota(m_nombre, m_especie, m_edad, mrow[4])
-                setattr(mas_obj, 'id', m_id)
-                if all((getattr(m, 'id', None) != m_id for m in servicio.mascotas)):
-                    servicio.mascotas.append(mas_obj)
-
-                try:
-                    resultado = servicio.atender_mascota(vet_obj, mas_obj)
-                    # Registrar la atención en la BD (siempre que tengamos ids)
-                    try:
-                        servicio.registrar_atencion(vet_obj.id, mas_obj.id, nota or "", precio=float(precio), iva=float(iva_sel))
-                    except Exception as e:
-                        st.warning(f"Atención realizada pero no se pudo guardar el historial: {e}")
-
-                    st.success(resultado)
-                except Exception as e:
-                    st.error(f"No fue posible atender la mascota: {e}")
-
-    elif accion == "Historial de consultas":
+            with col2:
+                st.metric("Mascotas", len(mascotas))
+        except:
+            with col2:
+                st.metric("Mascotas", 0)
+        
         try:
             veterinarios = servicio.listar_veterinarios()
-        except Exception:
-            veterinarios = []
-
-        if not veterinarios:
-            st.info("No hay veterinarios registrados.")
-        else:
-            vet_map = {f"{v[0]} - {v[1]} ({v[2]})": v for v in veterinarios}
-            sel = st.selectbox("Selecciona veterinario", list(vet_map.keys()))
-            if st.button("Mostrar historial"):
-                vrow = vet_map[sel]
-                vid = vrow[0]
-                try:
-                    historial = servicio.listar_atenciones_por_veterinario(vid)
-                    if not historial:
-                        st.info("No hay atenciones registradas para este veterinario.")
-                    else:
-                        for a in historial:
-                            at_id, fecha, mascota_nombre, duenio_nombre, nota, precio, iva = a
-                            total = 0.0
-                            try:
-                                total = float(precio) * (1 + float(iva) / 100)
-                            except Exception:
-                                total = 0.0
-                            st.markdown(f"<div class='card'><strong>{mascota_nombre}</strong> <span class='small-muted'>[{fecha}]</span><br/><span class='small-muted'>Dueño: {duenio_nombre}</span><div class='small-muted'>Nota: {nota}</div><div class='small-muted'>Precio: {float(precio):.2f} € — IVA: {float(iva):.0f}% — Total: {total:.2f} €</div></div>", unsafe_allow_html=True)
-                            if st.button("Eliminar", key=f"del_at_{at_id}"):
-                                try:
-                                    servicio.eliminar_atencion(at_id)
-                                    st.success("Atención eliminada")
-                                    safe_rerun()
-                                except Exception as e:
-                                    st.error(f"Error al eliminar atención: {e}")
-                except Exception as e:
-                    st.error(f"Error al obtener historial: {e}")
-
-
-elif menu == "Productos":
-    st.header("Catálogo de Productos")
-
-    nombre = st.text_input("Nombre del producto")
-    descripcion = st.text_area("Descripción (opcional)")
-    precio = st.number_input("Precio (€)", min_value=0.0, value=0.0, step=0.5, format="%.2f")
-    stock = st.number_input("Stock", min_value=0, value=0, step=1)
-    submit = st.button("Agregar producto")
-
-    if submit:
-        if nombre:
+            with col3:
+                st.metric("Veterinarios", len(veterinarios))
+        except:
+            with col3:
+                st.metric("Veterinarios", 0)
+        
+        with col4:
+            st.metric("Tu Rol", user['rol'].capitalize())
+        
+        # Sección de actividad reciente
+        st.markdown("---")
+        st.subheader("Actividad Reciente")
+        
+        try:
+            atenciones = servicio.listar_atenciones()
+            if atenciones:
+                for a in atenciones[:5]:
+                    with st.expander(f"{a[1]} - {a[2]} (Dueño: {a[3]})"):
+                        st.write(f"Nota: {a[4]}")
+            else:
+                st.info("No hay atenciones registradas")
+        except Exception as e:
+            st.warning(f"No se pudieron cargar las atenciones: {str(e)}")
+    
+    # ===================== CLIENTES =====================
+    elif choice == "Clientes":
+        st.title("Gestión de Clientes")
+        
+        # Pestañas para organización
+        tab1, tab2 = st.tabs(["Lista de Clientes", "Nuevo Cliente"])
+        
+        with tab1:
+            st.subheader("Clientes Registrados")
             try:
-                servicio.agregar_producto(nombre, descripcion or "", float(precio), int(stock))
-                st.success(f"Producto agregado: {nombre}")
+                clientes = servicio.listar_clientes()
+                if clientes:
+                    df_clientes = pd.DataFrame(clientes, columns=["ID", "Nombre", "Teléfono"])
+                    
+                    # Buscador
+                    search = st.text_input("Buscar cliente por nombre:")
+                    if search:
+                        df_clientes = df_clientes[df_clientes['Nombre'].str.contains(search, case=False)]
+                    
+                    st.dataframe(
+                        df_clientes,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Estadísticas
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Total Clientes", len(df_clientes))
+                else:
+                    st.info("No hay clientes registrados")
             except Exception as e:
-                st.error(f"Error al agregar producto: {e}")
-        else:
-            st.error("El nombre del producto es obligatorio.")
-
-    st.subheader("Productos disponibles")
-    try:
-        productos = servicio.listar_productos()
-        if not productos:
-            st.info("Aún no hay productos en el catálogo.")
-        else:
-            for p in productos:
-                pid, pnombre, pdesc, pprecio, pstock = p
-                st.markdown(f"<div class='card'><strong>{pnombre}</strong><br/><span class='small-muted'>{pdesc}</span><div class='small-muted'>Precio: {float(pprecio):.2f} € — Stock: {int(pstock)}</div></div>", unsafe_allow_html=True)
-                # low stock warning
-                try:
-                    if int(pstock) <= 5:
-                        st.warning(f"Stock bajo: {int(pstock)} unidades")
-                except Exception:
-                    pass
-
-                cols = st.columns([1,1,1,1])
-                with cols[0]:
-                    if st.button("Eliminar", key=f"del_prod_{pid}"):
+                st.error(f"Error al cargar clientes: {str(e)}")
+        
+        with tab2:
+            st.subheader("Agregar Nuevo Cliente")
+            with st.form("nuevo_cliente_form"):
+                nombre = st.text_input("Nombre completo", placeholder="Ej: Juan Pérez")
+                telefono = st.text_input("Teléfono", placeholder="Ej: +54 9 11 1234-5678")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    submit = st.form_submit_button("Guardar Cliente", type="primary")
+                with col2:
+                    reset = st.form_submit_button("Limpiar")
+                
+                if submit:
+                    if nombre and telefono:
                         try:
-                            servicio.eliminar_producto(pid)
-                            st.success("Producto eliminado")
-                            safe_rerun()
+                            cliente = Cliente(nombre, telefono)
+                            servicio.agregar_cliente(cliente)
+                            st.success(f"Cliente '{nombre}' guardado correctamente")
+                            st.rerun()
                         except Exception as e:
-                            st.error(f"Error al eliminar producto: {e}")
-                with cols[1]:
-                    qty_sell = st.number_input("Vender (cant)", min_value=1, value=1, step=1, key=f"qty_sell_{pid}")
-                    if st.button("Vender", key=f"vender_{pid}"):
+                            st.error(f"Error: {str(e)}")
+                    else:
+                        st.warning("Por favor complete todos los campos")
+    
+    # ===================== VETERINARIOS =====================
+    elif choice == "Veterinarios":
+        st.title("Gestión de Veterinarios")
+        
+        # Solo administradores pueden agregar veterinarios
+        if user['rol'] != 'admin':
+            st.warning("Solo los administradores pueden gestionar veterinarios")
+            st.stop()
+        
+        tab1, tab2 = st.tabs(["Lista de Veterinarios", "Nuevo Veterinario"])
+        
+        with tab1:
+            st.subheader("Veterinarios Registrados")
+            try:
+                vets = servicio.listar_veterinarios()
+                if vets:
+                    df_vets = pd.DataFrame(vets, columns=["ID", "Nombre", "Especialidad", "Teléfono"])
+                    st.dataframe(df_vets, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No hay veterinarios registrados")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+        
+        with tab2:
+            st.subheader("Agregar Nuevo Veterinario")
+            with st.form("nuevo_veterinario_form"):
+                nombre = st.text_input("Nombre del veterinario")
+                especialidad = st.text_input("Especialidad")
+                telefono = st.text_input("Teléfono")
+                
+                submit = st.form_submit_button("Guardar Veterinario", type="primary")
+                
+                if submit:
+                    if nombre and especialidad and telefono:
                         try:
-                            nuevo = servicio.vender_producto(pid, int(qty_sell))
-                            st.success(f"Venta registrada. Stock nuevo: {nuevo}")
-                            safe_rerun()
+                            vet = Veterinario(nombre, especialidad, telefono)
+                            servicio.agregar_veterinario(vet)
+                            st.success(f"Veterinario '{nombre}' guardado correctamente")
+                            st.rerun()
                         except Exception as e:
-                            st.error(f"Error al vender producto: {e}")
-                with cols[2]:
-                    qty_rep = st.number_input("Reponer (cant)", min_value=1, value=1, step=1, key=f"qty_rep_{pid}")
-                    if st.button("Reponer", key=f"reponer_{pid}"):
-                        try:
-                            nuevo = servicio.reponer_producto(pid, int(qty_rep))
-                            st.success(f"Stock actualizado: {nuevo}")
-                            safe_rerun()
-                        except Exception as e:
-                            st.error(f"Error al reponer producto: {e}")
-    except Exception as e:
-        st.error(f"No se pudo cargar el catálogo de productos: {e}")
+                            st.error(f"Error: {str(e)}")
+                    else:
+                        st.warning("Debes completar todos los campos")
+    
+    # ===================== MASCOTAS =====================
+    elif choice == "Mascotas":
+        st.title("Gestión de Mascotas")
+        
+        tab1, tab2 = st.tabs(["Lista de Mascotas", "Nueva Mascota"])
+        
+        with tab1:
+            st.subheader("Mascotas Registradas")
+            try:
+                mascotas = servicio.listar_mascotas()
+                if mascotas:
+                    df_mascotas = pd.DataFrame(mascotas, columns=["ID", "Nombre", "Especie", "Edad", "Dueño ID"])
+                    st.dataframe(df_mascotas, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No hay mascotas registradas")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+        
+        with tab2:
+            st.subheader("Agregar Nueva Mascota")
+            try:
+                clientes = servicio.listar_clientes()
+                if not clientes:
+                    st.error("No hay clientes registrados. Primero registre un cliente.")
+                    st.stop()
+                
+                with st.form("nueva_mascota_form"):
+                    nombre = st.text_input("Nombre de la mascota")
+                    especie = st.selectbox("Especie", ["Perro", "Gato", "Conejo", "Ave", "Reptil", "Otro"])
+                    edad = st.number_input("Edad", min_value=0, max_value=50, value=1)
+                    
+                    cliente_options = {f"{c[1]} (Tel: {c[2]})": c[0] for c in clientes}
+                    duenio_seleccionado = st.selectbox("Selecciona el dueño", list(cliente_options.keys()))
+                    duenio_id = cliente_options[duenio_seleccionado]
+                    
+                    submit = st.form_submit_button("Guardar Mascota", type="primary")
+                    
+                    if submit:
+                        if nombre:
+                            try:
+                                mascota = Mascota(nombre, especie, edad, duenio_id)
+                                servicio.agregar_mascota(mascota)
+                                st.success(f"Mascota '{nombre}' guardada correctamente")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+                        else:
+                            st.warning("Debes completar todos los campos")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    
+    # ===================== ATENCIONES =====================
+    elif choice == "Atenciones":
+        st.title("Gestión de Atenciones")
+        
+        tab1, tab2 = st.tabs(["Historial de Atenciones", "Nueva Atención"])
+        
+        with tab1:
+            st.subheader("Historial de Atenciones")
+            try:
+                atenciones = servicio.listar_atenciones()
+                if atenciones:
+                    for a in atenciones:
+                        with st.expander(f"{a[1]} - {a[2]} (Dueño: {a[3]})"):
+                            st.write(f"ID Atención: {a[0]}")
+                            st.write(f"Fecha: {a[1]}")
+                            st.write(f"Mascota: {a[2]}")
+                            st.write(f"Dueño: {a[3]}")
+                            st.write(f"Nota: {a[4]}")
+                else:
+                    st.info("No hay atenciones registradas")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+        
+        with tab2:
+            st.subheader("Registrar Nueva Atención")
+            try:
+                # Selección de veterinarios
+                vets = servicio.listar_veterinarios()
+                if not vets:
+                    st.error("No hay veterinarios registrados")
+                    st.stop()
+                
+                vet_options = {f"{v[1]} (Especialidad: {v[2]})": v[0] for v in vets}
+                vet_seleccionado = st.selectbox("Selecciona el veterinario", list(vet_options.keys()))
+                veterinario_id = vet_options[vet_seleccionado]
+                
+                # Selección de mascotas
+                mascotas = servicio.listar_mascotas()
+                if not mascotas:
+                    st.error("No hay mascotas registradas")
+                    st.stop()
+                
+                masc_options = {f"{m[1]} (Especie: {m[2]})": m[0] for m in mascotas}
+                masc_seleccionada = st.selectbox("Selecciona la mascota", list(masc_options.keys()))
+                mascota_id = masc_options[masc_seleccionada]
+                
+                nota = st.text_area("Nota de la atención", height=100)
+                
+                if st.button("Registrar Atención", type="primary"):
+                    if nota:
+                        servicio.registrar_atencion(veterinario_id, mascota_id, nota)
+                        st.success("Atención registrada correctamente")
+                        st.rerun()
+                    else:
+                        st.warning("Por favor ingrese una nota de atención")
+            except Exception as e:
+                st.error(f"Error: {e}")
+    
+    # ===================== ADMINISTRACIÓN =====================
+    elif choice == "Administración":
+        st.title("Panel de Administración")
+        
+        if user['rol'] != 'admin':
+            st.error("Acceso denegado. Solo administradores pueden acceder a esta sección.")
+            st.stop()
+        
+        tab1, tab2 = st.tabs(["Usuarios", "Estadísticas"])
+        
+        with tab1:
+            st.subheader("Gestión de Usuarios")
+            
+            # Botones de acción
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                ver_activos = st.checkbox("Mostrar solo activos", value=True)
+            with col2:
+                buscar_usuario = st.text_input("Buscar usuario", placeholder="Nombre o usuario")
+            
+            # Listar usuarios con opciones de gestión
+            conn = sqlite3.connect("database/usuarios.db")
+            
+            # Construir consulta según filtros
+            query = "SELECT id, username, nombre, rol, email, activo FROM usuarios"
+            conditions = []
+            
+            if ver_activos:
+                conditions.append("activo = 1")
+            
+            if buscar_usuario:
+                conditions.append("(username LIKE ? OR nombre LIKE ? OR email LIKE ?)")
+                params = [f"%{buscar_usuario}%", f"%{buscar_usuario}%", f"%{buscar_usuario}%"]
+            else:
+                params = []
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            
+            query += " ORDER BY nombre"
+            
+            if buscar_usuario:
+                df_usuarios = pd.read_sql_query(query, conn, params=params)
+            else:
+                df_usuarios = pd.read_sql_query(query, conn)
+            
+            # Agregar columna de estado
+            df_usuarios['Estado'] = df_usuarios['activo'].apply(lambda x: 'Activo' if x == 1 else 'Inactivo')
+            
+            # Mostrar tabla
+            st.dataframe(
+                df_usuarios[['username', 'nombre', 'rol', 'email', 'Estado']],
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Sección para gestionar usuarios
+            st.subheader("Acciones de Usuario")
+            
+            # Seleccionar usuario para gestionar
+            usuarios_lista = df_usuarios[['id', 'username', 'nombre']].values.tolist()
+            usuario_opciones = {f"{u[2]} ({u[1]})": u[0] for u in usuarios_lista}
+            
+            if usuario_opciones:
+                usuario_seleccionado = st.selectbox("Seleccionar usuario", list(usuario_opciones.keys()))
+                usuario_id = usuario_opciones[usuario_seleccionado]
+                
+                # Obtener estado actual del usuario
+                cursor = conn.cursor()
+                cursor.execute("SELECT activo, rol FROM usuarios WHERE id = ?", (usuario_id,))
+                usuario_info = cursor.fetchone()
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    if st.button("Activar", use_container_width=True):
+                        cursor.execute("UPDATE usuarios SET activo = 1 WHERE id = ?", (usuario_id,))
+                        conn.commit()
+                        st.success("Usuario activado")
+                        st.rerun()
+                
+                with col2:
+                    if st.button("Desactivar", use_container_width=True):
+                        cursor.execute("UPDATE usuarios SET activo = 0 WHERE id = ?", (usuario_id,))
+                        conn.commit()
+                        st.success("Usuario desactivado")
+                        st.rerun()
+                
+                with col3:
+                    nuevo_rol = st.selectbox("Cambiar rol", ["veterinario", "asistente", "recepcionista", "admin"],
+                                            key=f"rol_{usuario_id}")
+                    if st.button("Cambiar Rol", use_container_width=True):
+                        cursor.execute("UPDATE usuarios SET rol = ? WHERE id = ?", (nuevo_rol, usuario_id))
+                        conn.commit()
+                        st.success(f"Rol cambiado a {nuevo_rol}")
+                        st.rerun()
+                
+                with col4:
+                    if st.button("Eliminar", use_container_width=True, type="secondary"):
+                        if st.checkbox(f"¿Está seguro de eliminar a {usuario_seleccionado}?"):
+                            cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+                            conn.commit()
+                            st.success("Usuario eliminado")
+                            st.rerun()
+            
+            conn.close()
+            
+            # Sección para crear nuevo usuario (solo admin)
+            with st.expander("Crear Nuevo Usuario (Admin)"):
+                with st.form("admin_nuevo_usuario_form"):
+                    st.markdown("**Crear usuario directamente**")
+                    
+                    nuevo_username = st.text_input("Usuario*")
+                    nuevo_password = st.text_input("Contraseña*", type="password")
+                    nuevo_nombre = st.text_input("Nombre completo*")
+                    nuevo_email = st.text_input("Email")
+                    nuevo_rol = st.selectbox("Rol*", ["veterinario", "asistente", "recepcionista", "admin"])
+                    activo_inmediato = st.checkbox("Activar inmediatamente", value=True)
+                    
+                    if st.form_submit_button("Crear Usuario Directamente", type="primary"):
+                        if nuevo_username and nuevo_password and nuevo_nombre:
+                            # Verificar si el usuario ya existe
+                            conn = sqlite3.connect("database/usuarios.db")
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT id FROM usuarios WHERE username = ?", (nuevo_username,))
+                            if cursor.fetchone():
+                                st.error("El nombre de usuario ya existe")
+                            else:
+                                try:
+                                    activo = 1 if activo_inmediato else 0
+                                    cursor.execute(
+                                        """INSERT INTO usuarios 
+                                           (username, password, nombre, email, rol, activo) 
+                                           VALUES (?, ?, ?, ?, ?, ?)""",
+                                        (nuevo_username, hash_password(nuevo_password), 
+                                         nuevo_nombre, nuevo_email, nuevo_rol, activo)
+                                    )
+                                    conn.commit()
+                                    st.success(f"Usuario '{nuevo_username}' creado exitosamente")
+                                    st.rerun()
+                                except sqlite3.Error as e:
+                                    st.error(f"Error: {str(e)}")
+                                finally:
+                                    conn.close()
+                        else:
+                            st.warning("Complete los campos obligatorios (*)")
+        
+        with tab2:
+            st.subheader("Estadísticas del Sistema")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            # Estadísticas de usuarios
+            conn = sqlite3.connect("database/usuarios.db")
+            usuarios_count = pd.read_sql_query("SELECT COUNT(*) as total FROM usuarios", conn).iloc[0,0]
+            usuarios_por_rol = pd.read_sql_query("SELECT rol, COUNT(*) as cantidad FROM usuarios GROUP BY rol", conn)
+            conn.close()
+            
+            with col1:
+                st.metric("Total Usuarios", usuarios_count)
+            
+            with col2:
+                vet_count = 0
+                if not usuarios_por_rol.empty:
+                    vet_rows = usuarios_por_rol[usuarios_por_rol['rol'] == 'veterinario']
+                    if not vet_rows.empty:
+                        vet_count = vet_rows.iloc[0]['cantidad']
+                st.metric("Veterinarios", vet_count)
+            
+            with col3:
+                admin_count = 0
+                if not usuarios_por_rol.empty:
+                    admin_rows = usuarios_por_rol[usuarios_por_rol['rol'] == 'admin']
+                    if not admin_rows.empty:
+                        admin_count = admin_rows.iloc[0]['cantidad']
+                st.metric("Administradores", admin_count)
 
+# ===================== APLICACIÓN PRINCIPAL =====================
+def main():
+    """Función principal de la aplicación"""
+    
+    # Inicializar base de datos de usuarios
+    init_usuario_db()
+    
+    # Verificar si el usuario está logueado
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+    
+    # Mostrar página de login o aplicación principal
+    if not st.session_state['logged_in']:
+        login_page()
+    else:
+        main_app()
 
-elif menu == "Cuentas":
-    st.header("Cuentas Totales — Resumen Económico")
-
-    try:
-        valor_inventario = servicio.calcular_valor_inventario()
-    except Exception as e:
-        st.error(f"Error al calcular inventario: {e}")
-        valor_inventario = 0.0
-
-    try:
-        ingresos_consultas = servicio.calcular_ingresos_consultas()
-    except Exception as e:
-        st.error(f"Error al calcular ingresos por consultas: {e}")
-        ingresos_consultas = 0.0
-
-    total_general = float(valor_inventario) + float(ingresos_consultas)
-
-    st.subheader("Totales")
-    st.markdown(f"<div class='card'><strong>Valor inventario:</strong> {valor_inventario:.2f} €<br/><strong>Ingresos por consultas:</strong> {ingresos_consultas:.2f} €<br/><strong>Total general:</strong> {total_general:.2f} €</div>", unsafe_allow_html=True)
-
-    # Detalle por producto (valor por producto)
-    st.subheader("Detalle inventario")
-    try:
-        productos = servicio.listar_productos()
-        if not productos:
-            st.info("No hay productos en el inventario.")
-        else:
-            for p in productos:
-                pid, nombre, desc, precio, stock = p
-                try:
-                    valor = float(precio) * int(stock)
-                except Exception:
-                    valor = 0.0
-                st.markdown(f"<div class='card'><strong>{nombre}</strong> — Stock: {int(stock)} — Precio: {float(precio):.2f} € — Valor: {valor:.2f} €</div>", unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Error al listar productos para detalle: {e}")
-
-    # Detalle por veterinario
-    st.subheader("Ingresos por veterinario")
-    try:
-        vets_ing = servicio.listar_ingresos_por_veterinario()
-        if not vets_ing:
-            st.info("No hay veterinarios/ingresos registrados.")
-        else:
-            for v in vets_ing:
-                vid, vnombre, consultas, subtotal, total_con_iva = v
-                st.markdown(f"<div class='card'><strong>{vnombre}</strong> — Consultas: {consultas} — Subtotal: {float(subtotal):.2f} € — Total (IVA incluido): {float(total_con_iva):.2f} €</div>", unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Error al listar ingresos por veterinario: {e}")
-
+if __name__ == "__main__":
+    main()
